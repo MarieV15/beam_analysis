@@ -12,18 +12,28 @@ from glob import glob
 import numpy as np
 from functions_QF import selection_correction_method1, Eee2, Recoil_energy_nr
 
-def list_tree(directory):
-    """return a list of tree
+def neutron_spectrum(directory, scale, index, sub):
+    """select and correct event for neutron spectrum
+       argument: directory of file
+       argument: energy scale array
+       argument: index where to start in the energy scale array
+       argument: neutron spectrum histrogram empty
+       return: filled neutron histogram
     """
     trees = []
-    f_list = [] 
-    for filename in sorted(glob(directory+'/*.root')):
+    for i, filename in enumerate(sorted(glob(directory+'/*.root'))):
         f = ROOT.TFile(filename)
-        f_list.append(f)
-        trees.append(f.Get('T2'))
-    print(trees)
-    return trees
-
+        t = f.Get("T2")
+        print(filename)
+        h_in = ROOT.TH1D("h_in"+str(i), " inside onset window events; Energy [keV]; counts", 50, 0, 25)
+        h_out = ROOT.TH1D("h_out"+str(i), "outside onset window events; Energy [keV]; counts", 50, 0, 25)
+        a = scale[index+i]
+        selection_correction_method1(t, a, h_in, h_out)
+        h_out.Scale(0.098)
+        sub.Add(h_in, 1)
+        sub.Add(h_out, -1)
+    
+    
 En = 3.85
 angles = [9.2, 12.4, 16.2, 22.4]
 
@@ -42,41 +52,29 @@ f_out = ROOT.TFile("neutron_spectrum_2018-11-13_bin50.root", "recreate")
 directory = '/home/mvidal/tunl/data/T2/beam_data/neutron/'
 list_run = [directory+'run3', directory+'run4', directory+'run5', directory+'run6']
 
-list_tree5 = []
-list_tree5 = list_tree(list_run[0])
-#list_tree8 = list_tree(list_run[1])
-#list_tree15 = list_tree(list_run[2])
-#list_tree28 = list_tree(list_run[3])
-
-print(list_tree5)
-#list_QF = []
-#list_Enr = []
+list_QF = []
+list_Enr = []
 # for energy 5 keV:
-#h_sub5 = ROOT.TH1D("h_sub", 'neutron spectrum 5 keVnr; Energy [keV]; counts', 50, 0, 25)
-#h_sub5.Sumw2()
-#for i, tree in enumerate(list_tree5):
-#    h_in = ROOT.TH1D('h_inside'+str(i), 'neutron spectrum with all cuts; inside onset window; Energy [keV]; counts', 50 , 0, 25)
-#    h_out = ROOT.TH1D('h_outside'+str(i), 'neutron spectrum with all cuts; outside onset window; Energy [keV]; counts', 50, 0, 25)
-#    index = 8+i
-#    a = scale[index]
-#    h_in, h_out = selection_correction_method1(tree, a, h_in, h_out)
-#    h_out.Scale(0.098)
-#    h_sub5.Add(h_in, 1)
-#    h_sub5.Add(h_out, -1)
-#Enr_5 = Recoil_energy_nr(En, angles[0])
-#Eee5, Eee_error5 = Eee2(h_sub5)
-#QF5 = Eee5/Enr5
-#list_QF.append(QF5)
-#list_Enr.append(Enr_5)
+h_sub5 = ROOT.TH1D("h_sub", 'neutron spectrum 5 keVnr; Energy [keV]; counts', 50, 0, 25)
+h_sub5.Sumw2()
+neutron_spectrum(list_run[1], scale, 8, h_sub5)
+Enr_5 = Recoil_energy_nr(En, angles[0])
+Eee5, Eee_error5 = Eee2(h_sub5)
+QF5 = Eee5/Enr_5
+print("Eee5:", Eee5)
+print("Enr5:", Enr_5)
+list_QF.append(QF5)
+list_Enr.append(Enr_5)
 #h_sub5.Draw()
-#c2 = ROOT.TCanvas()
-#QF = np.array(list_QF, dtype=np.double)
-#E = np.array(list_Enr, dtype=np.double)
-#graph = ROOT.TGraph(len(list_QF), E, QF)
-#graph.GetXaxis().SetTitle('Energy [keV]')
-#graph.GetYaxis().SetTitle('quenching factor')
-#graph.SetTitle('Quenching factor as a function of recoil energy')
-#graph.Draw()
+c2 = ROOT.TCanvas()
+QF = np.array(list_QF, dtype=np.double)
+print(QF5)
+E = np.array(list_Enr, dtype=np.double)
+graph = ROOT.TGraph(len(list_QF), E, QF)
+graph.GetXaxis().SetTitle('Energy [keV]')
+graph.GetYaxis().SetTitle('quenching factor')
+graph.SetTitle('Quenching factor as a function of recoil energy')
+graph.Draw()
 
 
 

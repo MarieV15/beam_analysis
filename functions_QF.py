@@ -187,7 +187,6 @@ def selection_correction_method1(tree, scale, h_in, h_out):
                         h_out.Fill(energy2)
                         cut[1]=1
                         break
-    return h_in, h_out
 
 
 
