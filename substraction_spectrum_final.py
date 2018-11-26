@@ -65,7 +65,39 @@ print("Eee5:", Eee5)
 print("Enr5:", Enr_5)
 list_QF.append(QF5)
 list_Enr.append(Enr_5)
-#h_sub5.Draw()
+
+# for energy 8 keVnr:
+h_sub8 = ROOT.TH1D('h_sub8', "neutron spectrum 8 keVnr; Energy [keV]; counts", 50, 0, 25)
+h_sub8.Sumw2()
+neutron_spectrum(list_run[0], scale, 0, h_sub8)
+Enr_8 = Recoil_energy_nr(En, angles[1])
+Eee8, Eee_error8 = Eee2(h_sub8)
+QF8 = Eee8/Enr_8
+print("Eee8:", Eee8)
+print("Enr8:", Enr_8)
+list_QF.append(QF8)
+list_Enr.append(Enr_8)
+
+# for energy 15 keVnr:
+h_sub15 = ROOT.TH1D("h_sub15", "neutron spectrum 15 keVnr; Energy [keV]; counts", 50, 0, 25)
+h_sub15.Sumw2()
+neutron_spectrum(list_run[2], scale, 24, h_sub15)
+Enr_15 = Recoil_energy_nr(En, angles[2])
+Eee15, Eee_error15 = Eee2(h_sub15)
+QF15 = Eee15/Enr_15
+list_QF.append(QF15)
+list_Enr.append(Enr_15)
+
+# for energy 28 keVnr:
+h_sub28 = ROOT.TH1D("h_sub28", "neutron spectrum 28 keVnr; Energy [keV]; counts", 50, 0, 25)
+h_sub28.Sumw2()
+neutron_spectrum(list_run[3], scale, 36, h_sub28)
+Enr_28 = Recoil_energy_nr(list_run[3], angles[3])
+Eee28, Eee_error28 = Eee2(h_sub28)
+QF28 = Eee28/Enr_28
+list_QF.append(QF28)
+list_Enr.append(Enr_28)
+
 c2 = ROOT.TCanvas()
 QF = np.array(list_QF, dtype=np.double)
 print(QF5)
