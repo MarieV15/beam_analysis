@@ -15,6 +15,7 @@
 import ROOT
 import math
 import numpy as np
+gauss = ROOT.gRandom.Gaus
 
 def i_channel(pmt_channel, event):
     """argument: channel we want to find
@@ -187,9 +188,77 @@ def selection_correction_method1(tree, scale, h_in, h_out):
                         h_out.Fill(energy2)
                         cut[1]=1
                         break
+    return h_in, h_out
+                        
+                        
+def selection_correction_method1_v2(tree, scale, h_in, h_out):
+    """selection and correction in energy of the events
+       argument: tree
+       argument: energy scale we want to use to correct in energy our data
+       argument: histogram for events inside the onset window
+       argument: histogram for events outside the onser window
+       return: histogram of events passing the cuts: energy in sphere, rise time, onset and tof
+    """
+    #h_in = ROOT.TH1D("h_in", "neutron spectrum with all cuts: inside onset window; Energy [keV]; counts", 50, 0, 25)
+    #h_out = ROOT.TH1D("h_out", "neutron spectrum with all cuts: outside onset window; Energy [keV]; counts", 50, 0, 25)
+    for event in tree:
+        cut = [0, 0]
+        S15_ch = i_channel(0, event)
+        bpm_ch = i_channel(4, event)
+        RT = event.DD_Rise[S15_ch]
+        S15_w2 = event.DD_AmplADU[S15_ch]
+        onset = event.DD_Rise10pct[S15_ch]
+        if cut[0]==0:
+            # first cut: for inside onset window
+            # if event passes the first cuts
+            if S15_w2>1000 and RT>1.1 and RT<1.51 and onset>39 and onset<47:
+                # loop over the pmt channel numbers to calculate the time of flight: time bd - time bpm
+                for n_channel in range(5, 16):
+                    pmt_i = i_channel(n_channel, event)
+                    cfd_pmt = event.cfdPulse_CFDNS[pmt_i]
+                    cfd_bpm = event.cfdPulse_CFDNS[bpm_ch]
+                    # calculation of the time of flight
+                    tof = (cfd_pmt-cfd_bpm)%400
+                    #cut on tof: time of flight of the neutron
+                    if tof<335 and tof>295:
+                        energy2 = S15_w2*scale
+                        # fill histogram inside onset window
+                        h_in.Fill(energy2)
+                        cut[0]=1
+                        break
+        if cut[1]==0:
+            if S15_w2>1000 and RT<1.51 and RT>1.1 and ((onset<36 and onset>15) or (onset>50 and onset<=110)):
+                for n_channel in range(5, 16):
+                    pmt_i = i_channel(n_channel, event)
+                    cfd_pmt = event.cfdPulse_CFDNS[pmt_i]
+                    cfd_bpm = event.cfdPulse_CFDNS[bpm_ch]
+                    tof = (cfd_pmt-cfd_bpm)%400
+                    if tof<335 and tof>295:
+                        energy2 = S15_w2*scale
+                        h_out.Fill(energy2)
+                        cut[1]=1
+                        break
 
+def QF_uncertainty_En(trials, En, En_sigma, angle, Eee, QF_En):
+    for i in range(0, trials):
+        n = gauss(En, En_sigma)
+        Enr = Recoil_energy_nr(n, angle)
+        QF = Eee/Enr
+        QF_En.Fill(QF)
+    return QF_En
 
-
-
-
-
+def QF_uncertainty_angle(trials, En, angle, sigma_angle, Eee, QF_angle):
+    for i in range(0, trials):
+        theta = gauss(angle, sigma_angle)
+        Enr = Recoil_energy_nr(En, theta)
+        QF = Eee/Enr
+        QF_angle.Fill(QF)
+    return QF_angle
+    
+def QF_uncertainty_Eee(trials, En, angle, Eee, Eee_error, QF_Eee):
+    Enr = Recoil_energy_nr(En, angle)
+    for i in range(0, 10000):
+        mean = gauss(Eee, Eee_error)
+        QF = mean/Enr
+        QF_Eee.Fill(QF)
+    return QF_Eee
