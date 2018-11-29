@@ -4,11 +4,19 @@
 #**********************************************************************
 # functions used to calculate quenching factor:
 # --> i_channel(pmt_channel, event)
-# --> uncertainty_qf(delta_Eee, Eee, delta_Enr, Enr, qf)
 # --> Recoil_energy_nr(En, theta)
-# --> uncertainty_cos(theta, delta_theta)
-# --> uncertainty_sin2(theta, delta_theta)
 # --> extract_h(file)
+# --> def_hist()
+# --> Eee(histogram_in, histogram_out, sub_h)
+# --> Eee2(histogram)
+# --> mean_sigma(h)
+# --> selection_correction_method1(tree, scale, h_in, h_out)
+# --> selection_correction_method1_v2(tree, scale, h_in, h_out)
+# --> selection_correction_method2(tree, scale, h_in, h_out)
+# --> QF_uncertainty_En(trials, En, En_sigma, angle, Eee, QF_En)
+# --> QF_uncertainty_angle(trials, En, angle, angle_spread, Eee, QF_angle)
+# --> QF_uncertainty_Eee(trials, En, angle, Eee, Eee_spread, QF_Eee)
+# --> Enr_uncertainty(trials, En, sigma_En, angle, sigma_angle)
 # values for masses: PDG 2012
 #*********************************************************************
 
@@ -41,43 +49,6 @@ def Recoil_energy_nr(En, theta):
     angle = math.radians(theta)  # angle in radian: need to convert from degree to rad for math.sin and math.cos
     Enr = 2*En*(mn**2/(mn+mt)**2)*((mt/mn)+math.sin(angle)**2-math.cos(angle)*math.sqrt((mt/mn)**2-math.sin(angle)**2))
     return Enr*1e3
-
-def uncertainty_qf(delta_Eee, Eee, delta_Enr, Enr, qf):
-    """calculation of quenching factor uncertainties linked with nuclear recoil energy uncertainty and uncertainty on Eee
-       argument: uncertainty on energy deposited in detector (error from mean: fit) --> keV
-       argument: mean of energy deposited (mean: fit) --> keV
-       argument: error in nuclear recoil energy (error comes from angle uncertainty and neutron energy uncertainty) --> keV
-       argument: nuclear recoil energy --> keV
-       return: quenching factor uncertainty
-    """
-    list_dqf = []
-    for i in range(0, len(Eee)):
-        delta_qf = qf[i]*math.sqrt((delta_Eee[i]/Eee[i])**2+(delta_Enr[i]/Enr[i])**2)
-        list_dqf.append(delta_qf)
-    delta_qf = np.array(list_dqf, dtype=np.double)
-    return delta_qf
-
-def uncertainty_cos(theta, delta_theta):
-    """calculate the uncertainty of cos theta 
-       argument: scattering angle --> degree
-       argument: uncertainty of the scattering angle --> degree
-       return: uncertainty of cos theta --> radian
-    """
-    # angle conversion from degree to radian:
-    angle = math.radians(theta)
-    delta = math.radians(delta_theta)
-    return math.abs(-math.sin(angle))*delta
-
-def uncertainty_sin2(theta, delta_theta):
-    """calculate the uncertainty of sin^2 theta
-       argument: scattering angle --> degree
-       argument: uncertainty of the scattering angle --> degree
-       return: uncertainty if sin^2 theta --> radian
-    """
-    # angle conversion from degree to radian
-    angle = math.radians(theta)
-    delta = math.radians(delta_theta)
-    return 2*math.sin(angle)*math.cos(angle)*delta
 
 
 def extract_h(f1):
@@ -122,6 +93,15 @@ def Eee2(neutron_spectrum):
     mean_energy = results_fit.GetParameter(1)
     spread_energy = results_fit.GetParError(1)
     return mean_energy, spread_energy
+
+def mean_sigma(h):
+    """ return the mean and standard deviation of a distribution
+    """
+    h.Fit("gaus", "q")
+    result_fit = h.GetFunction("gaus")
+    mean = result_fit.GetParameter(1)
+    sigma = result_fit.GetParameter(2)
+    return mean, sigma
 
 def Eee(h_in, h_out, neutron_spectrum):
     """calculation of the energy deposited by nuclear recoil in detector --> quenched energy in electron equivalent
@@ -239,26 +219,97 @@ def selection_correction_method1_v2(tree, scale, h_in, h_out):
                         cut[1]=1
                         break
 
+def selection_correction_method2(tree, scale, h_in, h_out):
+    """selection and correction of events removing the time of flight cut
+       argument: tree
+       argument: energy scale
+       argument: signal histogram (inside onset window): emtpy
+       argument: background histogram (outside onset window): empty
+       return: signal and background histograms filled
+    """
+    for event in tree:
+        cut = [0, 0]
+        S15_ch = i_channel(0, event)
+        RT = event.DD_Rise[S15_ch]
+        onset = event.DD_Rise10pct[S15_ch]
+        energy_S15 = event.DD_AmplADU[S15_ch]
+        if cut[0]==0:
+            if energy_S15>1000 and RT>1.1 and RT<1.51 and onset>39 and onset<47:
+                energy = energy_S15*scale
+                h_in.Fill(energy)
+                cut[0]=1
+        if cut[1]==0:
+            if energy_S15>1000 and RT>1.1 and RT<1.51 and ((onset>=15 and onset<=36) or (onset>=50 and onset<=110)):
+                energy = energy_S15*scale
+                h_out.Fill(energy)
+                cut[1]=1
+    
+    
+
 def QF_uncertainty_En(trials, En, En_sigma, angle, Eee, QF_En):
+    """uncertainty on the QF due to neutron energy spread
+       argument: number of trials
+       argument: neutron energy mean
+       argument: neutron energy spread
+       argument: angle
+       argument: mean energy detected
+       return: QF distribution
+    """
     for i in range(0, trials):
         n = gauss(En, En_sigma)
         Enr = Recoil_energy_nr(n, angle)
         QF = Eee/Enr
         QF_En.Fill(QF)
-    return QF_En
+
 
 def QF_uncertainty_angle(trials, En, angle, sigma_angle, Eee, QF_angle):
+    """uncertainty on the QF due to the angle spread
+       argument: number of trials
+       argument: neutron energy mean
+       argument: angle
+       argument: spread of the angle
+       argument: mean energy detected
+       return: QF distribution 
+    """
     for i in range(0, trials):
         theta = gauss(angle, sigma_angle)
         Enr = Recoil_energy_nr(En, theta)
         QF = Eee/Enr
         QF_angle.Fill(QF)
-    return QF_angle
+
     
 def QF_uncertainty_Eee(trials, En, angle, Eee, Eee_error, QF_Eee):
+    """uncertainty on the QF due to Eee spread
+       argument: number of trials                                                                                                 
+       argument: neutron energy mean                                                                                             
+       argument: angle
+       argument: mean of the energy detected
+       argument: spread of the energy detected    
+       return: QF distribution
+    """
     Enr = Recoil_energy_nr(En, angle)
-    for i in range(0, 10000):
+    for i in range(0, trials):
         mean = gauss(Eee, Eee_error)
         QF = mean/Enr
         QF_Eee.Fill(QF)
-    return QF_Eee
+
+
+
+def Enr_uncertainty(trials, En, sigma_En, angle, sigma_angle):
+    """uncertainty of the nuclear recoil energy investigated
+       argument: number of trials
+       argument: neutron energy mean
+       argument: neutron energy spread
+       argument: mean scattering angle
+       argument: spread of the scattering angle
+       return: uncertainty and mean of the nuclear recoil energy
+    """
+    Enr_h = ROOT.TH1D("Enr_h", "Distribution of the recoil energy; energy [keV]; counts", 120, 0, 50)
+    for i in range(trials):
+        theta = gauss(angle, sigma_angle)
+        n = gauss(En, sigma_En)
+        enr = Recoil_energy_nr(n, theta)
+        Enr_h.Fill(enr)
+    c = ROOT.TCanvas()
+    mean, sigma = mean_sigma(Enr_h)
+    return mean, sigma

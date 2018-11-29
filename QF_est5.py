@@ -11,8 +11,17 @@ import numpy as np
 from functions_QF import extract_h, Eee, def_hist
 
 
-f_spectrum = ROOT.TFile("neutron_spectrum_2018-11-13_bin50.root")
-list_in, list_out = extract_h(f_spectrum)
+f_spectrum = ROOT.TFile("neutron_spectrum_2018-11-26.root")
+list_in = []
+list_out = []
+list_in.append(f_spectrum.Get("signal_5"))
+list_in.append(f_spectrum.Get("signal_8"))
+list_in.append(f_spectrum.Get("signal_15"))
+list_in.append(f_spectrum.Get("signal_28"))
+list_out.append(f_spectrum.Get("BG_5"))
+list_out.append(f_spectrum.Get("BG_8"))
+list_out.append(f_spectrum.Get("BG_15"))
+list_out.append(f_spectrum.Get("BG_28"))
 
 h_in = list_in[0]
 h_out = list_out[0]
@@ -40,4 +49,14 @@ graph = ROOT.TGraph(len(energies), x, y)
 graph.SetMarkerStyle(21)
 graph.SetMarkerSize(0.5)
 graph.Draw("ap")
+
+# eval graph:
+x = np.linspace(0, 25, 1000)
+y = []
+for i in range(0, len(x)):
+    y.append(graph.Eval(x[i]))
+spectrum = np.array(y, dtype=np.double)
+graph2 = ROOT.TGraph(len(x), x, spectrum)
+c3 = ROOT.TCanvas()
+graph2.Draw()
 input()

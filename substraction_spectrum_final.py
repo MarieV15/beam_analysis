@@ -21,7 +21,7 @@ def neutron_spectrum(directory, scale, index, sub):
        return: filled neutron histogram and signal histogram and BG histogram for each angle
     """
     h_signal = ROOT.TH1D("h_signal"+str(index), "Signal histogram: inside onset window; Energy [keV]; counts", 50, 0, 25)
-    h_BG = ROOT.TH1D("h_BG"+str(index), "Background historgram: outside onset window; Energy [keV]; counts", 50, 0, 25)
+    h_BG = ROOT.TH1D("h_BG"+str(index), "Background histogram: outside onset window; Energy [keV]; counts", 50, 0, 25)
     trees = []
     for i, filename in enumerate(sorted(glob(directory+'/*.root'))):
         f = ROOT.TFile(filename)

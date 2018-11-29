@@ -21,15 +21,15 @@ def uncertainty(delta_Eee, Eee, delta_Enr, Enr, qf):
 
 def main():
     
-    f1 = ROOT.TFile("neutron_spectrum_2018-11-13_bin50.root")
-    h_5_in = f1.Get("neutron_spectrum_tof_in4.69keVnr")
-    h_5_out = f1.Get("neutron_spectrum_tof_out4.69keVnr")
-    h_8_in = f1.Get("neutron_spectrum_tof_in8.33keVnr")
-    h_8_out = f1.Get("neutron_spectrum_tof_out8.33keVnr")
-    h_15_in = f1.Get("neutron_spectrum_tof_in14.75keVnr")
-    h_15_out= f1.Get("neutron_spectrum_tof_out14.75keVnr")
-    h_28_in = f1.Get("neutron_spectrum_tof_in27.59keVnr")
-    h_28_out = f1.Get("neutron_spectrum_tof_out27.59keVnr")
+    f1 = ROOT.TFile("neutron_spectrum_2018-11-26.root")
+    h_5_in = f1.Get("signal_5")
+    h_5_out = f1.Get("BG_5")
+    h_8_in = f1.Get("signal_8")
+    h_8_out = f1.Get("BG_8")
+    h_15_in = f1.Get("signal_15")
+    h_15_out= f1.Get("BG_15")
+    h_28_in = f1.Get("signal_28")
+    h_28_out = f1.Get("BG_28")
     list_in = [h_5_in, h_8_in, h_15_in, h_28_in]
     list_out = [h_5_out, h_8_out, h_15_out, h_28_out]
     
@@ -64,14 +64,18 @@ def main():
         legend.AddEntry(list_out[i], "histogram of events outside onset window", "l")
         legend.AddEntry(list_in[i], "histogram of events inside onset window", "l")
         legend.Draw("same")
-        #input()
+        input()
     
     
     #energy neutron beam:
-    energy_n = 3850 # keV
+    energy_n = 3.850 # keV
     energy_n_err = energy_n*10/100
     list_angles = [9, 12, 16, 22]
-    list_nr = [4.953, 8.977, 15.2678, 28.963]
+    Enr_5 = Recoil_energy_nr(energy_n, list_angles[0])
+    Enr_8 = Recoil_energy_nr(energy_n, list_angles[1])
+    Enr_15 = Recoil_energy_nr(energy_n, list_angles[2])
+    Enr_28 = Recoil_energy_nr(energy_n, list_angles[3])
+    list_nr = [Enr_5, Enr_8, Enr_15, Enr_28]
     list_qf = []
     #list_error_qf = []
     for i in range(0, 4):
